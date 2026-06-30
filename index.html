@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Supply Chain Builder | Mission Control</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        :root {
+            --bg-deep: #0B1220;
+            --accent-primary: #2563EB;
+            --glass-fill: rgba(25, 32, 41, 0.6);
+            --glass-stroke: rgba(195, 198, 215, 0.1);
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #dce3f0;
+            font-family: 'Hanken Grotesk', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--glass-fill);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-stroke);
+            border-radius: 20px;
+            transition: all 0.3s ease-out;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(37, 99, 235, 0.4);
+            box-shadow: 0 0 25px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s ease-out;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 25px rgba(37, 99, 235, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .progress-bar-fill {
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .step-active {
+            border-right: 4px solid var(--accent-primary);
+            background: rgba(37, 99, 235, 0.15);
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .animate-pulse-glow {
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#b4c5ff",
+                        "on-primary": "#002a78",
+                        "surface": "#0d141d",
+                        "outline": "#8d90a0",
+                        "outline-variant": "#434655",
+                        "surface-container": "#192029",
+                        "surface-container-high": "#232a34",
+                        "secondary": "#4edea3",
+                        "accent": "#2563EB"
+                    },
+                    spacing: {
+                        "margin-desktop": "40px",
+                        "margin-mobile": "16px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "sm": "8px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-md": ["Geist"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", fontWeight: "700" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="dark">
+<div id="root"></div>
+<script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const STRATEGY_STEPS = [
+            {
+                id: 'supplier',
+                label: 'Supplier Allocation',
+                icon: 'factory',
+                question: 'Where will you source your raw components?',
+                options: [
+                    { id: 'local', title: 'Onshore Cluster', desc: 'Domestic high-tech hub.', effects: { cost: -15, speed: +25, risk: +20, satisfaction: +10, sustainability: +20 } },
+                    { id: 'global', title: 'Global Arbitrage', desc: 'Diversified Asian markets.', effects: { cost: +30, speed: -10, risk: -15, satisfaction: 0, sustainability: -10 } }
+                ]
+            },
+            {
+                id: 'manufacturing',
+                label: 'Manufacturing',
+                icon: 'precision_manufacturing',
+                question: 'How will production be handled?',
+                options: [
+                    { id: 'automated', title: 'Lights-Out AI', desc: 'Fully autonomous robotic lines.', effects: { cost: -25, speed: +30, risk: +5, satisfaction: +15, sustainability: +10 } },
+                    { id: 'flexible', title: 'Human-In-Loop', desc: 'Manual craft with agile lines.', effects: { cost: -5, speed: -5, risk: +15, satisfaction: +25, sustainability: 0 } }
+                ]
+            },
+            {
+                id: 'warehousing',
+                label: 'Warehousing',
+                icon: 'warehouse',
+                question: 'Select your storage footprint.',
+                options: [
+                    { id: 'central', title: 'Mega-Hub', desc: 'Single 5M sq ft facility.', effects: { cost: +20, speed: -20, risk: -10, satisfaction: -5, sustainability: +15 } },
+                    { id: 'distributed', title: 'Edge Micro-Nodes', desc: '100+ urban nano-centers.', effects: { cost: -15, speed: +35, risk: +10, satisfaction: +30, sustainability: -5 } }
+                ]
+            },
+            {
+                id: 'freight',
+                label: 'Freight Mode',
+                icon: 'local_shipping',
+                question: 'What is the primary transit artery?',
+                options: [
+                    { id: 'green', title: 'EV Rail & Sea', desc: 'Decarbonized slow transit.', effects: { cost: -5, speed: -30, risk: +15, satisfaction: 0, sustainability: +40 } },
+                    { id: 'express', title: 'Cargo Drone Fleet', desc: 'Instant 24-hour delivery.', effects: { cost: -40, speed: +50, risk: -20, satisfaction: +40, sustainability: -25 } }
+                ]
+            },
+            {
+                id: 'inventory',
+                label: 'Inventory Buffer',
+                icon: 'inventory_2',
+                question: 'How do you manage stock levels?',
+                options: [
+                    { id: 'jit', title: 'Pure JIT', desc: 'Zero waste, zero slack.', effects: { cost: +25, speed: +5, risk: -40, satisfaction: -10, sustainability: +20 } },
+                    { id: 'resilient', title: 'Strategic Buffer', desc: '3 months of safety stock.', effects: { cost: -20, speed: 0, risk: +35, satisfaction: +15, sustainability: -10 } }
+                ]
+            }
+        ];
+
+        const COMPANIES = [
+            { name: "Nebula Dynamics", industry: "Aerospace", product: "Ion Thrusters", market: "Lunar/Orbital", demand: "84%" },
+            { name: "Quantum Bio", industry: "Health", product: "Syntho-Enzymes", market: "Global Tier 1", demand: "92%" },
+            { name: "EcoGrid Solutions", industry: "Energy", product: "Solid State Cells", market: "Smart Cities", demand: "76%" }
+        ];
+
+        const App = () => {
+            const [gameState, setGameState] = useState('hero'); // hero, sim, report
+            const [company, setCompany] = useState(COMPANIES[0]);
+            const [activeStep, setActiveStep] = useState(0);
+            const [selections, setSelections] = useState({});
+            const [metrics, setMetrics] = useState({
+                cost: 50,
+                speed: 50,
+                risk: 50,
+                satisfaction: 50,
+                sustainability: 50
+            });
+
+            const initializeSim = () => {
+                const randomCompany = COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
+                setCompany(randomCompany);
+                setSelections({});
+                setMetrics({ cost: 50, speed: 50, risk: 50, satisfaction: 50, sustainability: 50 });
+                setActiveStep(0);
+                setGameState('sim');
+            };
+
+            const handleSelect = (stepId, option) => {
+                const newSelections = { ...selections, [stepId]: option.id };
+                setSelections(newSelections);
+                
+                const newMetrics = { ...metrics };
+                Object.keys(option.effects).forEach(m => {
+                    newMetrics[m] = Math.min(100, Math.max(0, newMetrics[m] + option.effects[m]));
+                });
+                setMetrics(newMetrics);
+
+                if (activeStep < STRATEGY_STEPS.length - 1) {
+                    setActiveStep(activeStep + 1);
+                } else {
+                    setGameState('report');
+                }
+            };
+
+            const overallScore = useMemo(() => {
+                return Math.round((metrics.cost + metrics.speed + metrics.risk + metrics.satisfaction + metrics.sustainability) / 5);
+            }, [metrics]);
+
+            const getSWOT = () => {
+                const strengths = [];
+                if (metrics.speed > 70) strengths.push("Hyper-Responsive Delivery");
+                if (metrics.sustainability > 70) strengths.push("ESG Leadership");
+                if (metrics.cost > 70) strengths.push("Cost Efficiency Dominance");
+                
+                const threats = [];
+                if (metrics.risk < 40) threats.push("Systemic Fragility");
+                if (metrics.satisfaction < 40) threats.push("Customer Churn Risk");
+                
+                return { 
+                    s: strengths.length ? strengths[0] : "Balanced Operations",
+                    w: threats.length ? threats[0] : "Capital Over-Allocation"
+                };
+            };
+
+            return (
+                <div className="min-h-screen relative flex flex-col">
+                    {/* Background Animation */}
+                    <div className="fixed inset-0 z-0 pointer-events-none opacity-20">
+                        <webgl-shader src="{{DATA:ANIMATION:ANIMATION_1}}" class="w-full h-full" />
+                    </div>
+
+                    {/* Header */}
+                    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 flex justify-between items-center px-margin-desktop py-4">
+                        <div className="flex items-center gap-sm">
+                            <span className="material-symbols-outlined text-accent" style={{fontSize: '32px'}}>hub</span>
+                            <span className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Supply Chain Builder</span>
+                        </div>
+                        <div className="flex items-center gap-md">
+                            <span className="hidden md:block font-label-md text-on-surface-variant">OPERATOR: EXECUTIVE_9</span>
+                            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-bold border-2 border-primary/20">
+                                AU
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Canvas */}
+                    <main className="flex-grow pt-24 pb-32 px-margin-mobile md:px-margin-desktop z-10">
+                        {gameState === 'hero' && (
+                            <section className="max-w-6xl mx-auto flex flex-col items-center justify-center min-h-[618px] text-center">
+                                <h1 className="font-display-lg text-display-lg text-primary mb-2">Supply Chain Builder</h1>
+                                <p className="font-headline-md text-headline-md text-on-surface-variant mb-8">Learn. Build. Optimize.</p>
+                                
+                                <button 
+                                    onClick={initializeSim}
+                                    className="btn-primary px-12 py-4 rounded-xl text-white font-bold text-lg mb-12 flex items-center gap-sm"
+                                >
+                                    INITIALIZE MISSION
+                                    <span className="material-symbols-outlined">play_arrow</span>
+                                </button>
+
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-md w-full">
+                                    {['payments', 'speed', 'verified_user', 'sentiment_satisfied', 'eco'].map((icon, i) => (
+                                        <div key={i} className="glass-card p-6 flex flex-col items-center gap-sm">
+                                            <span className="material-symbols-outlined text-primary" style={{fontSize: '32px'}}>{icon}</span>
+                                            <span className="font-label-md uppercase tracking-widest text-outline">
+                                                {['Cost', 'Speed', 'Quality', 'Risk', 'Sustainability'][i]}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {gameState === 'sim' && (
+                            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-lg h-full">
+                                {/* Side Steps */}
+                                <aside className="lg:col-span-3 glass-card overflow-hidden hidden lg:block">
+                                    <div className="p-6 border-b border-outline-variant/20">
+                                        <h3 className="font-headline-md text-on-surface">Orchestration Steps</h3>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        {STRATEGY_STEPS.map((step, idx) => (
+                                            <div 
+                                                key={step.id}
+                                                className={`p-6 flex items-center gap-md transition-all ${idx === activeStep ? 'step-active text-primary' : 'text-on-surface-variant opacity-60'}`}
+                                            >
+                                                <span className="material-symbols-outlined">{step.icon}</span>
+                                                <span className="font-label-md">{step.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </aside>
+
+                                {/* Center Stage */}
+                                <section className="lg:col-span-6 flex flex-col gap-lg">
+                                    {/* Company Context */}
+                                    <div className="glass-card p-6 grid grid-cols-2 md:grid-cols-4 gap-md">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase text-outline">Industry</span>
+                                            <span className="font-bold text-primary">{company.industry}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase text-outline">Product</span>
+                                            <span className="font-bold text-primary">{company.product}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase text-outline">Markets</span>
+                                            <span className="font-bold text-primary">{company.market}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase text-outline">Demand Index</span>
+                                            <span className="font-bold text-secondary">{company.demand}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Active Question */}
+                                    <div className="glass-card p-8 flex-grow flex flex-col justify-center min-h-[400px]">
+                                        <div className="mb-8">
+                                            <span className="font-label-md text-accent uppercase tracking-widest block mb-2">Step {activeStep + 1} of 5</span>
+                                            <h2 className="font-headline-lg text-headline-lg text-on-surface">{STRATEGY_STEPS[activeStep].question}</h2>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
+                                            {STRATEGY_STEPS[activeStep].options.map(opt => (
+                                                <button 
+                                                    key={opt.id}
+                                                    onClick={() => handleSelect(STRATEGY_STEPS[activeStep].id, opt)}
+                                                    className="glass-card p-6 text-left group hover:bg-accent/10 hover:translate-y-[-4px]"
+                                                >
+                                                    <h4 className="font-bold text-primary mb-2 group-hover:text-secondary transition-colors">{opt.title}</h4>
+                                                    <p className="text-sm text-on-surface-variant mb-4">{opt.desc}</p>
+                                                    <div className="flex flex-wrap gap-xs">
+                                                        {Object.entries(opt.effects).map(([key, val]) => (
+                                                            <span key={key} className={`text-[10px] px-2 py-1 rounded-full ${val > 0 ? 'bg-secondary/10 text-secondary border border-secondary/20' : val < 0 ? 'bg-error/10 text-[#ffb4ab] border border-error/20' : 'bg-outline/10 text-outline'}`}>
+                                                                {key.toUpperCase()} {val > 0 ? `+${val}` : val}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Live Metrics */}
+                                <aside className="lg:col-span-3 flex flex-col gap-lg">
+                                    <div className="glass-card p-6 flex flex-col gap-lg h-full">
+                                        <h3 className="font-label-md text-outline uppercase tracking-widest">Real-Time Impact</h3>
+                                        {[
+                                            { key: 'cost', label: 'Efficiency', icon: 'payments' },
+                                            { key: 'speed', label: 'Velocity', icon: 'speed' },
+                                            { key: 'risk', label: 'Resilience', icon: 'warning' },
+                                            { key: 'satisfaction', label: 'CX / Utility', icon: 'sentiment_satisfied' },
+                                            { key: 'sustainability', label: 'ESG Compliance', icon: 'eco' }
+                                        ].map(m => (
+                                            <div key={m.key} className="flex flex-col gap-sm">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="flex items-center gap-xs">
+                                                        <span className="material-symbols-outlined text-[18px] text-primary">{m.icon}</span>
+                                                        <span className="font-label-md text-on-surface-variant">{m.label}</span>
+                                                    </div>
+                                                    <span className="font-bold text-primary">{metrics[m.key]}%</span>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-accent progress-bar-fill shadow-[0_0_8px_rgba(37,99,235,0.6)]"
+                                                        style={{ width: `${metrics[m.key]}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </aside>
+                            </div>
+                        )}
+
+                        {gameState === 'report' && (
+                            <section className="max-w-4xl mx-auto flex flex-col gap-lg animate-in fade-in slide-in-from-bottom-8 duration-700">
+                                <div className="glass-card p-12 text-center relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-8 opacity-10">
+                                        <span className="material-symbols-outlined" style={{fontSize: '120px'}}>assignment_turned_in</span>
+                                    </div>
+                                    <span className="font-label-md text-accent uppercase tracking-widest block mb-4">Post-Simulation Analysis</span>
+                                    <h1 className="font-display-lg text-display-lg text-primary mb-8">Supply Chain Optimized</h1>
+                                    
+                                    <div className="flex justify-center items-center gap-xl mb-12">
+                                        <div className="relative">
+                                            <svg className="w-48 h-48 -rotate-90">
+                                                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-surface-container" />
+                                                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={552.92} strokeDashoffset={552.92 - (552.92 * overallScore) / 100} className="text-secondary transition-all duration-1000 ease-out" />
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <span className="text-4xl font-bold text-white">{overallScore}</span>
+                                                <span className="text-xs text-outline">INDEX</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-left flex flex-col gap-md">
+                                            <div className="p-4 bg-secondary/10 border border-secondary/20 rounded-xl">
+                                                <div className="text-secondary font-bold text-sm">STRATEGIC STRENGTH</div>
+                                                <div className="text-white font-headline-md">{getSWOT().s}</div>
+                                            </div>
+                                            <div className="p-4 bg-error/10 border border-error/20 rounded-xl">
+                                                <div className="text-[#ffb4ab] font-bold text-sm">CRITICAL VULNERABILITY</div>
+                                                <div className="text-white font-headline-md">{getSWOT().w}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-8 bg-surface-container rounded-2xl mb-8 text-left border border-outline-variant/30">
+                                        <h3 className="font-bold text-primary mb-2 flex items-center gap-xs">
+                                            <span className="material-symbols-outlined">psychology</span>
+                                            CEO Executive Summary
+                                        </h3>
+                                        <p className="text-on-surface-variant leading-relaxed">
+                                            Your orchestration for <span className="text-white font-bold">{company.name}</span> suggests a 
+                                            {overallScore > 75 ? ' visionary approach to modern logistics.' : ' conservative yet functional infrastructure.'} 
+                                            By prioritizing {Object.keys(metrics).reduce((a, b) => metrics[a] > metrics[b] ? a : b)}, 
+                                            you have positioned the firm as a leader in {company.industry}. 
+                                            However, pay close attention to the {Object.keys(metrics).reduce((a, b) => metrics[a] < metrics[b] ? a : b)} metrics 
+                                            which may capsize long-term quarterly growth if left unaddressed.
+                                        </p>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setGameState('hero')}
+                                        className="btn-primary px-12 py-4 rounded-xl text-white font-bold flex items-center gap-sm mx-auto"
+                                    >
+                                        RE-INITIALIZE
+                                        <span className="material-symbols-outlined">refresh</span>
+                                    </button>
+                                </div>
+                            </section>
+                        )}
+                    </main>
+
+                    {/* Bottom Utility Bar (Simulation Only) */}
+                    {gameState === 'sim' && (
+                        <nav className="fixed bottom-0 w-full z-50 bg-surface-container-highest/40 backdrop-blur-md border-t border-primary/20 h-20 px-margin-desktop flex justify-around items-center rounded-t-xl shadow-[0_-10px_40px_rgba(37,99,235,0.1)]">
+                            {[
+                                {label: 'Cost', icon: 'payments'},
+                                {label: 'Speed', icon: 'speed'},
+                                {label: 'Risk', icon: 'warning'},
+                                {label: 'Satisfaction', icon: 'sentiment_satisfied'},
+                                {label: 'Sustainability', icon: 'eco'}
+                            ].map((item, i) => (
+                                <div key={i} className="flex flex-col items-center justify-center text-outline grayscale-[0.5] hover:text-primary transition-colors cursor-help">
+                                    <span className="material-symbols-outlined">{item.icon}</span>
+                                    <span className="font-label-md">{item.label}</span>
+                                </div>
+                            ))}
+                        </nav>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body></html>
